@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 
-RUN npm install --omit=dev
+RUN npm ci
 
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -13,6 +13,8 @@ COPY tsconfig.json ./
 COPY src ./src
 
 RUN npm run build
+
+RUN npm prune --omit=dev
 
 FROM node:20-alpine AS runner
 WORKDIR /app
