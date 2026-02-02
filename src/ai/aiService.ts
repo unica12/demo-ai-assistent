@@ -29,7 +29,7 @@ export async function generateAssistantReply(
       return fallbackResponse;
     }
 
-    const parsed = aiResponseSchema.safeParse(JSON.parse(content));
+    const parsed = aiResponseSchema.safeParse(parseJsonResponse(content));
     if (!parsed.success) {
       logger.warn({ error: parsed.error }, 'AI response validation failed');
       return {
@@ -42,5 +42,19 @@ export async function generateAssistantReply(
   } catch (error) {
     logger.error({ error }, 'AI request failed');
     return fallbackResponse;
+  }
+}
+
+function parseJsonResponse(content: string): unknown {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const start = content.indexOf('{');
+    const end = content.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      const slice = content.slice(start, end + 1);
+      return JSON.parse(slice);
+    }
+    return null;
   }
 }
