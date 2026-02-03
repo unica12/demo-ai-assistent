@@ -1,4 +1,4 @@
-import { openai } from './openaiClient';
+import { createDeepSeekChatCompletion } from './deepseekClient';
 import { aiResponseSchema, ChatMessage, AIResponse } from '../types/ai';
 import { env } from '../config/env';
 import { systemPrompt } from '../config/systemPrompt';
@@ -10,13 +10,6 @@ const RETRY_SYSTEM_NOTICE =
   'Your previous response was invalid JSON. Return a valid JSON object only, with the required keys.';
 const NO_RESPONSE_FORMAT_NOTICE =
   'Return a valid JSON object only, with the required keys and no extra text.';
-const SERVICE_UNAVAILABLE_RESPONSE: AIResponse = {
-  reply:
-    'Сейчас не получается ответить из-за технических ограничений. Пожалуйста, повторите запрос чуть позже.',
-  intent: 'cold',
-  should_collect_contact: false,
-  contact_request_message: ''
-};
 
 export async function generateAssistantReply(
   messages: ChatMessage[]
@@ -56,7 +49,7 @@ export async function generateAssistantReply(
     throw new Error('AI response validation failed after retry');
   } catch (error) {
     logger.error({ error }, 'AI request failed');
-    return SERVICE_UNAVAILABLE_RESPONSE;
+    throw error;
   }
 }
 
@@ -82,38 +75,19 @@ function buildAntiRepetitionMessages(messages: ChatMessage[]): ChatMessage[] {
 }
 
 async function requestStructuredReply(messages: ChatMessage[]): Promise<string> {
-  let allowResponseFormat = true;
-
   for (let attempt = 1; attempt <= MAX_AI_RETRIES; attempt += 1) {
     try {
-      const completion = await openai.chat.completions.create({
-        model: env.DEEPSEEK_MODEL,
-        temperature: env.DEEPSEEK_TEMPERATURE,
-        top_p: 0.9,
-        messages: allowResponseFormat
+      const payloadMessages =
+        attempt === 1
           ? messages
           : [
               ...messages,
               { role: 'system', content: NO_RESPONSE_FORMAT_NOTICE }
-            ],
-        response_format: allowResponseFormat
-          ? { type: 'json_object' }
-          : undefined
-      });
-
-      logger.debug(
-        {
-          attempt,
-          hasResponseFormat: allowResponseFormat,
-          choices: completion.choices?.length ?? 0
-        },
-        'AI response received'
+            ];
+      const content = await createDeepSeekChatCompletion(
+        payloadMessages,
+        env.DEEPSEEK_TEMPERATURE
       );
-
-      const content = completion.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('Empty AI response');
-      }
       logger.debug(
         { attempt, contentPreview: content.slice(0, 200) },
         'AI response content preview'
@@ -121,9 +95,6 @@ async function requestStructuredReply(messages: ChatMessage[]): Promise<string> 
       return content;
     } catch (error) {
       logger.warn({ error, attempt }, 'AI request attempt failed');
-      if (isResponseFormatUnsupported(error)) {
-        allowResponseFormat = false;
-      }
       if (attempt === MAX_AI_RETRIES) {
         throw error;
       }
@@ -131,15 +102,6 @@ async function requestStructuredReply(messages: ChatMessage[]): Promise<string> 
   }
 
   throw new Error('AI request retries exhausted');
-}
-
-function isResponseFormatUnsupported(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-
-  const message = 'message' in error ? String(error.message) : '';
-  return message.toLowerCase().includes('response_format');
 }
 
 function parseJsonResponse(content: string): unknown {
