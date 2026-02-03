@@ -50,8 +50,8 @@ src/
    ```bash
    cp .env.example .env
    ```
-   Fill in required values. If port `5432` is already used locally, set
-   `POSTGRES_PORT=5433` and update `DATABASE_URL` to use the same port.
+   Fill in required values. The Docker Compose setup exposes PostgreSQL on
+   port `5433` by default, so set `DATABASE_URL` accordingly.
 
 3. **Start PostgreSQL + Redis (optional via Docker)**
    ```bash
@@ -77,10 +77,10 @@ docker compose up --build
 
 ### Port conflicts (macOS/Homebrew Postgres)
 
-If you already have a local PostgreSQL instance on port `5432`, update your `.env`:
+Docker Compose exposes PostgreSQL on `5433` to avoid clashing with local
+Postgres on `5432`. Ensure your `.env` points to `5433`:
 
 ```env
-POSTGRES_PORT=5433
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/assistant?schema=public
 ```
 
@@ -117,8 +117,6 @@ docker compose up -d postgres redis
 | SYSTEM_PROMPT_OVERRIDE | Override system prompt (optional) |
 | RATE_LIMIT_WINDOW_SECONDS | Rate limit window size |
 | RATE_LIMIT_MAX_REQUESTS | Allowed requests per window |
-| POSTGRES_PORT | Host port for the Docker Postgres service |
-| REDIS_PORT | Host port for the Docker Redis service |
 
 ## Security Notes
 

@@ -4,12 +4,12 @@ import { env } from '../config/env';
 import { systemPrompt } from '../config/systemPrompt';
 import { logger } from '../utils/logger';
 
-const fallbackResponse: AIResponse = {
-  reply: 'Спасибо, что написали! Подскажите, пожалуйста, что именно вам нужно?',
-  intent: 'cold',
-  should_collect_contact: false,
-  contact_request_message: ''
-};
+const fallbackReplies = [
+  'Спасибо, что написали! Подскажите, пожалуйста, что именно вам нужно?',
+  'Здравствуйте! Опишите, пожалуйста, ваш запрос — чем могу помочь?',
+  'Привет! Расскажите подробнее о задаче, чтобы я мог помочь.',
+  'Спасибо за сообщение! Что именно вас интересует?'
+];
 
 export async function generateAssistantReply(
   messages: ChatMessage[]
@@ -26,14 +26,14 @@ export async function generateAssistantReply(
 
     const content = completion.choices[0]?.message?.content;
     if (!content) {
-      return fallbackResponse;
+      return getFallbackResponse();
     }
 
     const parsed = aiResponseSchema.safeParse(parseJsonResponse(content));
     if (!parsed.success) {
       logger.warn({ error: parsed.error }, 'AI response validation failed');
       return {
-        ...fallbackResponse,
+        ...getFallbackResponse(),
         reply: content
       };
     }
@@ -41,8 +41,19 @@ export async function generateAssistantReply(
     return parsed.data;
   } catch (error) {
     logger.error({ error }, 'AI request failed');
-    return fallbackResponse;
+    return getFallbackResponse();
   }
+}
+
+function getFallbackResponse(): AIResponse {
+  const reply =
+    fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+  return {
+    reply,
+    intent: 'cold',
+    should_collect_contact: false,
+    contact_request_message: ''
+  };
 }
 
 function parseJsonResponse(content: string): unknown {
