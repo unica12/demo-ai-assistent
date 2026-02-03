@@ -14,7 +14,7 @@ export async function generateAssistantReply(
   const prompt = env.SYSTEM_PROMPT_OVERRIDE?.trim() || systemPrompt;
 
   try {
-    const baseMessages = [
+    const baseMessages: ChatMessage[] = [
       { role: 'system', content: prompt },
       ...buildAntiRepetitionMessages(messages),
       ...messages
