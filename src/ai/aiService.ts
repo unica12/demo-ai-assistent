@@ -1,4 +1,4 @@
-import { createDeepSeekChatCompletion } from './deepseekClient';
+import { createDeepSeekChatCompletion, DeepSeekMessage } from './deepseekClient';
 import { aiResponseSchema, ChatMessage, AIResponse } from '../types/ai';
 import { env } from '../config/env';
 import { systemPrompt } from '../config/systemPrompt';
@@ -77,7 +77,7 @@ function buildAntiRepetitionMessages(messages: ChatMessage[]): ChatMessage[] {
 async function requestStructuredReply(messages: ChatMessage[]): Promise<string> {
   for (let attempt = 1; attempt <= MAX_AI_RETRIES; attempt += 1) {
     try {
-      const payloadMessages =
+      const payloadMessages: DeepSeekMessage[] =
         attempt === 1
           ? messages
           : [
