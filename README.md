@@ -1,20 +1,20 @@
 # Telegram AI Assistant (Lead Qualification)
 
-Production-ready Telegram assistant built with Node.js, TypeScript, Telegraf, OpenAI, PostgreSQL (Prisma), and Redis. Designed for sales-oriented lead qualification, contact capture, and manager notifications.
+Production-ready Telegram assistant built with Node.js, TypeScript, Telegraf, DeepSeek (OpenAI-compatible API), PostgreSQL (Prisma), and Redis. Designed for sales-oriented lead qualification, contact capture, and manager notifications.
 
 ## Architecture Decisions
 
 - **Clean architecture**: domain logic (leads, AI, services) is separated from infrastructure (database, Redis, Telegram). This keeps the bot maintainable and testable.
 - **Prisma + PostgreSQL**: structured lead data, conversations, and message history are stored relationally for auditability and analytics.
 - **Redis**: used for rate limiting to protect the bot from spam and accidental floods without adding latency to database writes.
-- **AI response schema**: the OpenAI response is validated with Zod to avoid malformed responses and keep business logic deterministic.
+- **AI response schema**: the DeepSeek response is validated with Zod to avoid malformed responses and keep business logic deterministic.
 - **Config-first**: system prompt, model, temperature, and manager chat ID are controlled via env vars, enabling fast iteration without code changes.
 
 ## Folder Structure
 
 ```
 src/
- ├── ai/            # OpenAI client + response parsing
+ ├── ai/            # DeepSeek client + response parsing
  ├── bot/           # Telegram bot setup & handlers
  ├── config/        # Environment + system prompt
  ├── database/      # Prisma + Redis clients
@@ -101,16 +101,17 @@ docker compose up -d postgres redis
   ```bash
   npm run prisma:migrate
   ```
-- Ensure `TELEGRAM_BOT_TOKEN` and `OPENAI_API_KEY` are set.
+- Ensure `TELEGRAM_BOT_TOKEN` and `DEEPSEEK_API_KEY` are set.
 
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
 | TELEGRAM_BOT_TOKEN | Bot token from BotFather |
-| OPENAI_API_KEY | OpenAI API key |
-| OPENAI_MODEL | Model name (default: `gpt-4o-mini`) |
-| OPENAI_TEMPERATURE | Response temperature |
+| DEEPSEEK_API_KEY | DeepSeek API key |
+| DEEPSEEK_MODEL | Model name (default: `deepseek-chat`) |
+| DEEPSEEK_TEMPERATURE | Response temperature |
+| AI_TIMEOUT_MS | AI request timeout in milliseconds |
 | MANAGER_CHAT_ID | Telegram chat ID for notifications |
 | DATABASE_URL | PostgreSQL connection string |
 | REDIS_URL | Redis connection string |

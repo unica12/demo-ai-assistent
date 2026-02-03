@@ -5,8 +5,16 @@ import { systemPrompt } from '../config/systemPrompt';
 import { logger } from '../utils/logger';
 
 const MAX_RECENT_ASSISTANT_MESSAGES = 5;
+const MAX_AI_RETRIES = 2;
 const RETRY_SYSTEM_NOTICE =
   'Your previous response was invalid JSON. Return a valid JSON object only, with the required keys.';
+const SERVICE_UNAVAILABLE_RESPONSE: AIResponse = {
+  reply:
+    'Сейчас не получается ответить из-за технических ограничений. Пожалуйста, повторите запрос чуть позже.',
+  intent: 'cold',
+  should_collect_contact: false,
+  contact_request_message: ''
+};
 
 export async function generateAssistantReply(
   messages: ChatMessage[]
@@ -46,7 +54,7 @@ export async function generateAssistantReply(
     throw new Error('AI response validation failed after retry');
   } catch (error) {
     logger.error({ error }, 'AI request failed');
-    throw error;
+    return SERVICE_UNAVAILABLE_RESPONSE;
   }
 }
 
@@ -72,19 +80,30 @@ function buildAntiRepetitionMessages(messages: ChatMessage[]): ChatMessage[] {
 }
 
 async function requestStructuredReply(messages: ChatMessage[]): Promise<string> {
-  const completion = await openai.chat.completions.create({
-    model: env.OPENAI_MODEL,
-    temperature: env.OPENAI_TEMPERATURE,
-    top_p: 0.9,
-    messages,
-    response_format: { type: 'json_object' }
-  });
+  for (let attempt = 1; attempt <= MAX_AI_RETRIES; attempt += 1) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: env.DEEPSEEK_MODEL,
+        temperature: env.DEEPSEEK_TEMPERATURE,
+        top_p: 0.9,
+        messages,
+        response_format: { type: 'json_object' }
+      });
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error('Empty AI response');
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('Empty AI response');
+      }
+      return content;
+    } catch (error) {
+      logger.warn({ error, attempt }, 'AI request attempt failed');
+      if (attempt === MAX_AI_RETRIES) {
+        throw error;
+      }
+    }
   }
-  return content;
+
+  throw new Error('AI request retries exhausted');
 }
 
 function parseJsonResponse(content: string): unknown {
