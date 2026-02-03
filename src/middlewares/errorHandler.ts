@@ -6,7 +6,7 @@ export function errorHandler(): MiddlewareFn<Context> {
     try {
       await next();
     } catch (error) {
-      logger.error({ error }, 'Unhandled bot error');
+      logger.error({ err: error }, 'Unhandled bot error');
       await ctx.reply('Something went wrong. Please try again shortly.');
     }
   };

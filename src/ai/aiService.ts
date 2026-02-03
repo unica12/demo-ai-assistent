@@ -10,6 +10,13 @@ const RETRY_SYSTEM_NOTICE =
   'Your previous response was invalid JSON. Return a valid JSON object only, with the required keys.';
 const NO_RESPONSE_FORMAT_NOTICE =
   'Return a valid JSON object only, with the required keys and no extra text.';
+const SERVICE_UNAVAILABLE_RESPONSE: AIResponse = {
+  reply:
+    'Сейчас сервис временно недоступен. Попробуйте, пожалуйста, чуть позже.',
+  intent: 'cold',
+  should_collect_contact: false,
+  contact_request_message: ''
+};
 
 export async function generateAssistantReply(
   messages: ChatMessage[]
@@ -48,8 +55,8 @@ export async function generateAssistantReply(
     );
     throw new Error('AI response validation failed after retry');
   } catch (error) {
-    logger.error({ error }, 'AI request failed');
-    throw error;
+    logger.error({ err: error }, 'AI request failed');
+    return SERVICE_UNAVAILABLE_RESPONSE;
   }
 }
 
@@ -94,7 +101,7 @@ async function requestStructuredReply(messages: ChatMessage[]): Promise<string> 
       );
       return content;
     } catch (error) {
-      logger.warn({ error, attempt }, 'AI request attempt failed');
+      logger.warn({ err: error, attempt }, 'AI request attempt failed');
       if (attempt === MAX_AI_RETRIES) {
         throw error;
       }
